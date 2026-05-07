@@ -275,8 +275,8 @@ export class GameRoom {
 
   startNight(requestingPlayerId: string): boolean {
     if (!this.isHost(requestingPlayerId)) return false;
-    if (this.phase !== 'voting') return false;
-    this.round++;
+    if (this.phase !== 'voting' && this.phase !== 'role-reveal') return false;
+    if (this.phase !== 'role-reveal') this.round++;
     this.nightActions = [];
     this.players = this.players.map(p => ({ ...p, hasActed: false }));
     this.setPhase('night');
@@ -312,6 +312,14 @@ export class GameRoom {
 
   private onPhaseTimeout(): void {
     switch (this.phase) {
+      case 'role-reveal': {
+        // Auto-advance to the first night when role-reveal timer expires
+        this.nightActions = [];
+        this.players = this.players.map(p => ({ ...p, hasActed: false }));
+        this.setPhase('night');
+        this.callbacks.onMessage(this.narratorMsg('Night 1 falls. The village sleeps.'));
+        break;
+      }
       case 'night':   this._resolveNight(); break;
       case 'voting':  this._resolveVote();  break;
       default: break;
