@@ -163,6 +163,16 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     case 'RESET_GAME':
       return { ...INITIAL_STATE, localNickname: state.localNickname };
 
+    // ── Socket-only sync actions ───────────────────────────────────────────
+    case 'SYNC_PLAYERS': {
+      const localId = state.localPlayerId;
+      const mapped = action.payload.players.map(p => ({ ...p, isLocal: p.id === localId }));
+      return { ...state, players: mapped };
+    }
+
+    case 'SYNC_SERVER_STATE':
+      return { ...state, ...action.payload };
+
     default:
       return state;
   }
@@ -231,50 +241,28 @@ export function useSocketGame() {
     });
 
     socket.on('game:phase_changed', ({ phase, round, phaseTimeLeft }) => {
-      // Map server phases to local dispatch actions
-      if (phase === 'night')   dispatch({ type: 'START_NIGHT' });
-      if (phase === 'day')     dispatch({ type: 'START_DAY' });
-      if (phase === 'voting')  dispatch({ type: 'START_VOTING' });
-      if (phase === 'ended')   return; // handled by game:over
-
-      // Sync timer
-      dispatch({
-        type: 'ASSIGN_ROLES', // reuse shape — we patch phaseTimeLeft directly
-        payload: { assignments: [] },
-      });
-
-      // Directly patch time via a custom approach
-      setTimeout(() => {
-        // Tick the timer from server value
-        (stateRef as React.MutableRefObject<GameState & { _serverTime?: number }>).current._serverTime = phaseTimeLeft;
-      }, 0);
+      if (phase === 'night')        dispatch({ type: 'START_NIGHT' });
+      else if (phase === 'day')     dispatch({ type: 'START_DAY' });
+      else if (phase === 'voting')  dispatch({ type: 'START_VOTING' });
+      // Always sync authoritative time/round from server last
+      dispatch({ type: 'SYNC_SERVER_STATE', payload: { phaseTimeLeft, round } });
     });
 
     socket.on('night:resolved', ({ eliminatedId, savedId, investigationResult }) => {
-      // Optimistic: mark eliminated player locally
-      if (eliminatedId) {
-        const updated = stateRef.current.players.map(p =>
-          p.id === eliminatedId ? { ...p, isAlive: false } : p
-        );
-        dispatch({ type: 'ASSIGN_ROLES', payload: { assignments: [] } }); // trigger rerender via players:updated
-      }
-      // Store investigation result in state via a message
-      if (investigationResult !== null) {
-        dispatch({
-          type: 'SEND_MESSAGE',
-          payload: { type: 'system', content: `__investigation__:${investigationResult}` },
-        });
-      }
+      // players:updated follows immediately with correct player list;
+      // here we just record the round summary + detective result
+      dispatch({
+        type: 'SYNC_SERVER_STATE',
+        payload: {
+          eliminatedThisRound: eliminatedId,
+          savedThisRound: savedId,
+          investigationResult,   // null for everyone except the Detective
+        },
+      });
     });
 
     socket.on('players:updated', ({ players }) => {
-      const localId = stateRef.current.localPlayerId;
-      const mapped = players.map(p => ({ ...p, isLocal: p.id === localId }));
-      // Replace all players
-      // We dispatch individual ADD_PLAYER calls — or use ASSIGN_ROLES as a state setter
-      // Instead, use a small helper action
-      dispatch({ type: 'REMOVE_PLAYER', payload: { id: '__sync__' } }); // trigger flow
-      mapped.forEach(p => dispatch({ type: 'ADD_PLAYER', payload: p }));
+      dispatch({ type: 'SYNC_PLAYERS', payload: { players } });
     });
 
     socket.on('chat:message', (msg) => {
@@ -298,19 +286,13 @@ export function useSocketGame() {
     });
 
     socket.on('vote:resolved', ({ eliminatedId, players }) => {
-      const localId = stateRef.current.localPlayerId;
-      const mapped = players.map(p => ({ ...p, isLocal: p.id === localId }));
-      dispatch({ type: 'REMOVE_PLAYER', payload: { id: '__sync__' } });
-      mapped.forEach(p => dispatch({ type: 'ADD_PLAYER', payload: p }));
+      dispatch({ type: 'SYNC_PLAYERS', payload: { players } });
+      dispatch({ type: 'SYNC_SERVER_STATE', payload: { eliminatedThisRound: eliminatedId } });
     });
 
     socket.on('game:over', ({ winningTeam, players }) => {
-      const localId = stateRef.current.localPlayerId;
-      const mapped = players.map(p => ({ ...p, isLocal: p.id === localId }));
-      dispatch({ type: 'REMOVE_PLAYER', payload: { id: '__sync__' } });
-      mapped.forEach(p => dispatch({ type: 'ADD_PLAYER', payload: p }));
-      // Set winning team via CHECK_WIN_CONDITION-style — patch phase directly
-      dispatch({ type: 'SEND_MESSAGE', payload: { type: 'system', content: `__game_over__:${winningTeam}` } });
+      dispatch({ type: 'SYNC_PLAYERS', payload: { players } });
+      dispatch({ type: 'SYNC_SERVER_STATE', payload: { winningTeam, phase: 'ended' } });
     });
 
     socket.on('error', ({ message }) => {

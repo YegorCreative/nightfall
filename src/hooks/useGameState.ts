@@ -341,6 +341,13 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         localNickname: state.localNickname,
       };
 
+    // Socket-only sync actions — no-ops in mock mode
+    case 'SYNC_PLAYERS':
+      return { ...state, players: action.payload.players };
+
+    case 'SYNC_SERVER_STATE':
+      return { ...state, ...action.payload };
+
     default:
       return state;
   }

@@ -97,7 +97,7 @@ export interface GameState {
 export type GameAction =
   | { type: 'SET_NICKNAME'; payload: string }
   | { type: 'CREATE_ROOM'; payload: { code: string } }
-  | { type: 'JOIN_ROOM'; payload: { code: string; player: Player } }
+  | { type: 'JOIN_ROOM'; payload: { code: string; player: Player; players?: Player[] } }
   | { type: 'ADD_PLAYER'; payload: Player }
   | { type: 'REMOVE_PLAYER'; payload: { id: string } }
   | { type: 'START_GAME' }
@@ -113,4 +113,7 @@ export type GameAction =
   | { type: 'RESOLVE_VOTE' }
   | { type: 'TICK_TIMER' }
   | { type: 'CHECK_WIN_CONDITION' }
-  | { type: 'RESET_GAME' };
+  | { type: 'RESET_GAME' }
+  // ─── Socket sync actions (server is authoritative source of truth) ─────────
+  | { type: 'SYNC_PLAYERS'; payload: { players: Player[] } }
+  | { type: 'SYNC_SERVER_STATE'; payload: Partial<Pick<GameState, 'phaseTimeLeft' | 'round' | 'winningTeam' | 'investigationResult' | 'eliminatedThisRound' | 'savedThisRound' | 'phase'>> };
