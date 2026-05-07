@@ -398,7 +398,8 @@ export function useGameState() {
   }, []);
 
   const startGame = useCallback(() => {
-    dispatch({ type: 'ASSIGN_ROLES' as unknown as GameAction['type'], payload: undefined } as GameAction);
+    // ASSIGN_ROLES payload is inferred from state inside the reducer
+    dispatch({ type: 'ASSIGN_ROLES', payload: { assignments: [] } });
     dispatch({ type: 'START_GAME' });
   }, []);
 
