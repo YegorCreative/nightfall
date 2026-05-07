@@ -366,6 +366,79 @@ export function useGameState() {
     };
   }, [state.phase, state.phaseTimeLeft]);
 
+  // ─── AI Simulation ────────────────────────────────────────────────────────
+  // Mock players automatically submit night actions and votes after a short delay.
+  // TODO: Remove this entire block when Socket.io backend is integrated —
+  //       the server will handle all non-local player actions.
+  const aiTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => {
+    // Clear any pending AI timers on phase change
+    aiTimersRef.current.forEach(t => clearTimeout(t));
+    aiTimersRef.current = [];
+
+    const { phase, players } = state;
+    const nonLocalAlive = players.filter(p => !p.isLocal && p.isAlive);
+    if (nonLocalAlive.length === 0) return;
+
+    if (phase === 'night') {
+      // Each non-local player with a role submits a random night action
+      nonLocalAlive.forEach((actor, idx) => {
+        if (!actor.role || actor.hasActed) return;
+        // Roles that have night actions: Mafia, Doctor, Detective
+        if (actor.role === 'Citizen') return;
+
+        const eligibleTargets = players.filter(
+          p => p.isAlive && p.id !== actor.id
+        );
+        if (eligibleTargets.length === 0) return;
+
+        const target = eligibleTargets[Math.floor(Math.random() * eligibleTargets.length)];
+        const delay = 2000 + idx * 600 + Math.random() * 1000;
+
+        const t = setTimeout(() => {
+          dispatch({
+            type: 'SUBMIT_NIGHT_ACTION',
+            payload: {
+              actorId: actor.id,
+              actorRole: actor.role!,
+              targetId: target.id,
+            },
+          });
+        }, delay);
+        aiTimersRef.current.push(t);
+      });
+    }
+
+    if (phase === 'voting') {
+      // Each non-local alive player votes for a random alive player
+      nonLocalAlive.forEach((voter, idx) => {
+        if (voter.hasVoted) return;
+        const eligibleTargets = players.filter(
+          p => p.isAlive && p.id !== voter.id
+        );
+        if (eligibleTargets.length === 0) return;
+
+        const target = eligibleTargets[Math.floor(Math.random() * eligibleTargets.length)];
+        const delay = 1500 + idx * 400 + Math.random() * 800;
+
+        const t = setTimeout(() => {
+          dispatch({
+            type: 'SUBMIT_VOTE',
+            payload: { voterId: voter.id, targetId: target.id },
+          });
+        }, delay);
+        aiTimersRef.current.push(t);
+      });
+    }
+
+    return () => {
+      aiTimersRef.current.forEach(t => clearTimeout(t));
+      aiTimersRef.current = [];
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.phase, state.round]);
+
   // ─── Actions ──────────────────────────────────────────────────────────────
 
   const setNickname = useCallback((nickname: string) => {
@@ -449,6 +522,10 @@ export function useGameState() {
     dispatch({ type: 'RESOLVE_VOTE' });
   }, []);
 
+  const startNight = useCallback(() => {
+    dispatch({ type: 'START_NIGHT' });
+  }, []);
+
   const resetGame = useCallback(() => {
     dispatch({ type: 'RESET_GAME' });
   }, []);
@@ -478,6 +555,7 @@ export function useGameState() {
     startVoting,
     submitVote,
     resolveVote,
+    startNight,
     resetGame,
     // Derived
     localPlayer,

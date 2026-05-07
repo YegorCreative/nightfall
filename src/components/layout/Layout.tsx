@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '../../utils/cn';
+import { StarField } from '../ui/StarField';
 
 // ─── Background layout with cinematic overlays ───────────────────────────────
 interface LayoutProps {
@@ -25,6 +26,9 @@ export const Layout: React.FC<LayoutProps> = ({
 
   return (
     <div className="relative min-h-dvh w-full overflow-hidden bg-void">
+      {/* Star field */}
+      <StarField />
+
       {/* Noise texture overlay */}
       <div className="noise-overlay" aria-hidden="true" />
 

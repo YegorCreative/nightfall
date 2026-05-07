@@ -19,7 +19,7 @@ export function assignRoles(players: Player[]): Record<string, string> {
   const assignments: Record<string, string> = {};
   const shuffledPlayers = shuffle(players);
   shuffledPlayers.forEach((p, i) => {
-    assignments[p.id] = rolePool[i] ?? 'Citizen';
+    assignments[p.id] = rolePool[i] || 'Citizen';
   });
   return assignments;
 }
@@ -57,7 +57,7 @@ export function resolveNightActions(
   let isTargetMafia: boolean | null = null;
   if (detectiveTarget) {
     const target = players.find(p => p.id === detectiveTarget);
-    isTargetMafia = target?.role === 'Mafia' ?? false;
+    isTargetMafia = (target?.role === 'Mafia') || false;
   }
 
   return {

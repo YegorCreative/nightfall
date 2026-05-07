@@ -19,7 +19,7 @@ const EndGamePage: React.FC = () => {
 
   const handlePlayAgain = () => {
     resetGame();
-    navigate('/lobby');
+    navigate('/');
   };
 
   const handleHome = () => {

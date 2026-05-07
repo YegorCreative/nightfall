@@ -10,6 +10,7 @@ import { PlayerList } from '../components/players/PlayerList';
 import { RoleRevealModal } from '../components/modals/RoleRevealModal';
 import { useGame } from '../context/GameContext';
 import { ROLES } from '../data/roles';
+import type { Role } from '../types/game';
 import { formatPhaseTime } from '../utils/gameLogic';
 import { cn } from '../utils/cn';
 
@@ -36,10 +37,12 @@ const GamePage: React.FC = () => {
     startVoting,
     submitVote,
     resolveVote,
+    startNight,
   } = useGame();
 
   const [nightTarget, setNightTarget] = useState<string | null>(null);
   const [showNightResult, setShowNightResult] = useState(false);
+  const [showDetectiveResult, setShowDetectiveResult] = useState(false);
 
   // Redirect guards
   useEffect(() => {
@@ -47,14 +50,27 @@ const GamePage: React.FC = () => {
     if (state.phase === 'ended') navigate('/end');
   }, [state.room, state.phase, navigate]);
 
-  // Show night result briefly
+  // Show night result briefly on day transition
   useEffect(() => {
-    if (state.phase === 'day' && state.eliminatedThisRound !== null) {
+    if (state.phase === 'day') {
       setShowNightResult(true);
-      const t = setTimeout(() => setShowNightResult(false), 4000);
+      const t = setTimeout(() => setShowNightResult(false), 5000);
       return () => clearTimeout(t);
     }
-  }, [state.phase, state.eliminatedThisRound]);
+  }, [state.phase, state.round]);
+
+  // Show detective investigation result
+  useEffect(() => {
+    if (
+      state.phase === 'day' &&
+      localPlayer?.role === 'Detective' &&
+      state.investigationResult !== null
+    ) {
+      setShowDetectiveResult(true);
+      const t = setTimeout(() => setShowDetectiveResult(false), 6000);
+      return () => clearTimeout(t);
+    }
+  }, [state.phase, state.round, state.investigationResult, localPlayer?.role]);
 
   if (!state.room || !localPlayer) return null;
 
@@ -103,8 +119,37 @@ const GamePage: React.FC = () => {
             <div className="glass-heavy rounded-2xl px-6 py-3 border border-crimson-800/30 shadow-red-glow max-w-sm text-center">
               <p className="text-white/80 text-sm">
                 {state.eliminatedThisRound
-                  ? `💀 ${state.players.find(p => p.id === state.eliminatedThisRound)?.nickname} was eliminated.`
-                  : '🌅 No one was eliminated last night.'}
+                  ? `💀 ${state.players.find(p => p.id === state.eliminatedThisRound)?.nickname} was found dead.`
+                  : '🌅 The village woke unharmed. No one was eliminated.'}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Detective Investigation Toast ─────────────────────────── */}
+      <AnimatePresence>
+        {showDetectiveResult && state.investigationResult !== null && (
+          <motion.div
+            className="fixed bottom-24 left-0 right-0 z-40 p-4 flex justify-center"
+            initial={{ y: 40, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 40, opacity: 0 }}
+          >
+            <div className={cn(
+              'glass-heavy rounded-2xl px-6 py-3 border max-w-xs text-center',
+              state.investigationResult
+                ? 'border-red-700/50 shadow-red-glow'
+                : 'border-emerald-700/40 shadow-[0_0_20px_rgba(52,211,153,0.2)]'
+            )}>
+              <p className="text-white/50 text-[10px] uppercase tracking-widest mb-1">🔍 Investigation Result</p>
+              <p className={cn(
+                'text-sm font-semibold',
+                state.investigationResult ? 'text-red-400' : 'text-emerald-400'
+              )}>
+                {state.investigationResult
+                  ? 'Your target is MAFIA.'
+                  : 'Your target is not Mafia.'}
               </p>
             </div>
           </motion.div>
@@ -210,24 +255,33 @@ const GamePage: React.FC = () => {
                 />
               )}
 
+              {isNight && isAlive && localPlayer.isHost && (
+                <motion.div
+                  key="night-controls"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <Button
+                    id="resolve-night-btn"
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-indigo-300/70"
+                    leftIcon={<Zap size={14} />}
+                    onClick={resolveNight}
+                  >
+                    Resolve Night
+                  </Button>
+                </motion.div>
+              )}
+
               {isDay && isAlive && localPlayer.isHost && (
                 <motion.div
                   key="day-controls"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
-                  className="space-y-2"
                 >
-                  <Button
-                    id="resolve-night-btn"
-                    variant="ghost"
-                    size="sm"
-                    className="w-full text-white/50"
-                    leftIcon={<Zap size={14} />}
-                    onClick={resolveNight}
-                  >
-                    Resolve Night
-                  </Button>
                   <Button
                     id="start-voting-btn"
                     variant="danger"
@@ -247,17 +301,32 @@ const GamePage: React.FC = () => {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
+                  className="space-y-2"
                 >
-                  <Button
-                    id="resolve-vote-btn"
-                    variant="danger"
-                    size="sm"
-                    className="w-full"
-                    leftIcon={<ChevronRight size={14} />}
-                    onClick={resolveVote}
-                  >
-                    Resolve Votes
-                  </Button>
+                  {state.votes.length > 0 && (
+                    <Button
+                      id="resolve-vote-btn"
+                      variant="danger"
+                      size="sm"
+                      className="w-full"
+                      leftIcon={<ChevronRight size={14} />}
+                      onClick={resolveVote}
+                    >
+                      Resolve Votes
+                    </Button>
+                  )}
+                  {state.votes.length === 0 && (
+                    <Button
+                      id="start-night-btn"
+                      variant="ghost"
+                      size="sm"
+                      className="w-full"
+                      leftIcon={<Moon size={14} />}
+                      onClick={startNight}
+                    >
+                      Start Next Night
+                    </Button>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -283,7 +352,7 @@ const GamePage: React.FC = () => {
 
 // ─── Night Action Panel ───────────────────────────────────────────────────────
 interface NightActionPanelProps {
-  role: ReturnType<typeof ROLES[string]>;
+  role: Role;
   target: string | null;
   hasActed: boolean;
   onSubmit: () => void;

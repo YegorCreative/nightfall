@@ -11,6 +11,11 @@ interface CardProps {
   glow?: 'none' | 'red' | 'blue' | 'green' | 'amber';
 }
 
+interface CardSectionProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
 const glowMap: Record<string, string> = {
   none: '',
   red: 'shadow-red-glow border-red-800/30',
@@ -19,7 +24,13 @@ const glowMap: Record<string, string> = {
   amber: 'shadow-[0_0_20px_rgba(245,158,11,0.25)] border-amber-800/30',
 };
 
-export const Card: React.FC<CardProps> = ({
+// Extend Card component type to include sub-components
+interface CardComponent extends React.FC<CardProps> {
+  Header: React.FC<CardSectionProps>;
+  Body: React.FC<CardSectionProps>;
+}
+
+const CardBase: React.FC<CardProps> = ({
   children,
   className,
   hover = false,
@@ -48,20 +59,17 @@ export const Card: React.FC<CardProps> = ({
 };
 
 // ─── Card.Header ─────────────────────────────────────────────────────────────
-interface CardHeaderProps {
-  children: React.ReactNode;
-  className?: string;
-}
-
-Card.Header = function CardHeader({ children, className }: CardHeaderProps) {
-  return (
-    <div className={cn('px-6 py-4 border-b border-white/5', className)}>
-      {children}
-    </div>
-  );
-} as React.FC<CardHeaderProps>;
+const CardHeader: React.FC<CardSectionProps> = ({ children, className }) => (
+  <div className={cn('px-6 py-4 border-b border-white/5', className)}>
+    {children}
+  </div>
+);
 
 // ─── Card.Body ────────────────────────────────────────────────────────────────
-Card.Body = function CardBody({ children, className }: CardHeaderProps) {
-  return <div className={cn('p-6', className)}>{children}</div>;
-} as React.FC<CardHeaderProps>;
+const CardBody: React.FC<CardSectionProps> = ({ children, className }) => (
+  <div className={cn('p-6', className)}>{children}</div>
+);
+
+export const Card = CardBase as CardComponent;
+Card.Header = CardHeader;
+Card.Body = CardBody;
