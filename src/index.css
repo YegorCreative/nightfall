@@ -1,0 +1,181 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Base Reset ─────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: #080810;
+  color: #f1f1f5;
+  font-family: 'Inter', system-ui, sans-serif;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100dvh;
+}
+
+/* ─── Noise / Fog Overlay ────────────────────────────────────── */
+.noise-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+/* ─── Fog Gradient ───────────────────────────────────────────── */
+.fog-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(139,0,0,0.08) 0%, transparent 70%);
+}
+
+/* ─── Glassmorphism ──────────────────────────────────────────── */
+.glass {
+  background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.07);
+}
+
+.glass-heavy {
+  background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.14);
+}
+
+/* ─── Selection ──────────────────────────────────────────────── */
+::selection {
+  background: rgba(183,0,0,0.3);
+  color: #fff;
+}
+
+/* ─── Typography helpers ─────────────────────────────────────── */
+.text-gradient-red {
+  background: linear-gradient(135deg, #f72b2b 0%, #b80000 60%, #7c0d0d 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-light {
+  background: linear-gradient(135deg, #ffffff 0%, #c0c0d0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Phase color themes ─────────────────────────────────────── */
+.phase-day {
+  --phase-color: #f59e0b;
+  --phase-glow: rgba(245,158,11,0.2);
+}
+
+.phase-night {
+  --phase-color: #6366f1;
+  --phase-glow: rgba(99,102,241,0.2);
+}
+
+.phase-voting {
+  --phase-color: #ef4444;
+  --phase-glow: rgba(239,68,68,0.2);
+}
+
+/* ─── Pulsing dot ────────────────────────────────────────────── */
+@keyframes pulse-ring {
+  0% { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+.pulse-dot::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse-ring 1.5s ease-out infinite;
+}
+
+/* ─── Chat message styles ────────────────────────────────────── */
+.chat-narrator {
+  font-style: italic;
+  color: #a78bfa;
+  border-left: 2px solid rgba(167,139,250,0.4);
+  padding-left: 12px;
+  margin: 4px 0;
+}
+
+.chat-mafia {
+  color: #f87171;
+  border-left: 2px solid rgba(248,113,113,0.4);
+  padding-left: 12px;
+}
+
+/* ─── Role colors ────────────────────────────────────────────── */
+.role-mafia     { color: #f87171; }
+.role-doctor    { color: #34d399; }
+.role-detective { color: #60a5fa; }
+.role-citizen   { color: #9ca3af; }
+
+/* ─── Timer ring animation ───────────────────────────────────── */
+@keyframes timer-drain {
+  from { stroke-dashoffset: 0; }
+  to   { stroke-dashoffset: 220; }
+}
+
+/* ─── Entrance animations ────────────────────────────────────── */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ─── Day/Night ambient gradient ─────────────────────────────── */
+.ambient-day {
+  background: radial-gradient(ellipse 100% 60% at 50% 0%, rgba(245,158,11,0.06) 0%, transparent 60%);
+}
+
+.ambient-night {
+  background: radial-gradient(ellipse 100% 60% at 50% 0%, rgba(99,102,241,0.08) 0%, transparent 60%);
+}
+
+.ambient-voting {
+  background: radial-gradient(ellipse 100% 60% at 50% 0%, rgba(239,68,68,0.08) 0%, transparent 60%);
+}
